@@ -13,11 +13,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TransactionControllers = void 0;
+/* eslint-disable @typescript-eslint/no-unused-vars */
 const catchAsync_1 = require("../../utils/catchAsync");
 const sendResponse_1 = require("../../utils/sendResponse");
 const http_status_1 = __importDefault(require("http-status"));
 const transaction_service_1 = require("./transaction.service");
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const env_1 = require("../../config/env");
 const getSingleTransaction = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const transactionId = req.params.id;
     const decodedToken = req.user;
@@ -29,7 +30,6 @@ const getSingleTransaction = (0, catchAsync_1.catchAsync)((req, res, next) => __
         data: transaction,
     });
 }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getSummary = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedToken = req.user;
     const transaction = yield transaction_service_1.TransactionServices.getSummary(decodedToken);
@@ -40,7 +40,6 @@ const getSummary = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(vo
         data: transaction,
     });
 }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getAdminSummary = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedToken = req.user;
     const summaryData = yield transaction_service_1.TransactionServices.getAdminSummary(decodedToken);
@@ -51,7 +50,6 @@ const getAdminSummary = (0, catchAsync_1.catchAsync)((req, res, next) => __await
         data: summaryData,
     });
 }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getAllTransactions = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedToken = req.user;
     const query = req.query;
@@ -63,7 +61,6 @@ const getAllTransactions = (0, catchAsync_1.catchAsync)((req, res, next) => __aw
         data: allTransactions,
     });
 }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const addMoney = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedToken = req.user;
     const payload = req.body;
@@ -71,11 +68,21 @@ const addMoney = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void
     (0, sendResponse_1.sendResponse)(res, {
         success: true,
         statusCode: http_status_1.default.OK,
-        message: "Transaction Created Successfully. Wait for agent's approval.",
+        message: "Transaction Created Successfully. Proceed to pay.",
         data: transaction,
     });
 }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const addMoneySuccess = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { trans_id } = req.query;
+    yield transaction_service_1.TransactionServices.addMoneySuccess(trans_id);
+    res.status(200).redirect(`${env_1.envVars.SSL.REDIRECT_URL}/success`);
+}));
+const addMoneyFail = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { trans_id } = req.query;
+    const payload = req.body;
+    yield transaction_service_1.TransactionServices.addMoneyFail(trans_id);
+    res.status(200).redirect(`${env_1.envVars.SSL.REDIRECT_URL}/failed`);
+}));
 const addMoneyConfirm = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedToken = req.user;
     const transactionId = req.params.id;
@@ -88,7 +95,6 @@ const addMoneyConfirm = (0, catchAsync_1.catchAsync)((req, res, next) => __await
         data: transaction,
     });
 }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const withdrawMoney = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedToken = req.user;
     const payload = req.body;
@@ -100,7 +106,6 @@ const withdrawMoney = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter
         data: transaction,
     });
 }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const cashIn = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedToken = req.user;
     const payload = req.body;
@@ -112,7 +117,6 @@ const cashIn = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0
         data: transaction,
     });
 }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const sendMoney = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedToken = req.user;
     const payload = req.body;
@@ -124,7 +128,6 @@ const sendMoney = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(voi
         data: transaction,
     });
 }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const refund = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const transactionId = req.params.id;
     const transaction = yield transaction_service_1.TransactionServices.refund(transactionId);
@@ -145,5 +148,7 @@ exports.TransactionControllers = {
     addMoneyConfirm,
     refund,
     getSummary,
-    getAdminSummary
+    getAdminSummary,
+    addMoneySuccess,
+    addMoneyFail,
 };

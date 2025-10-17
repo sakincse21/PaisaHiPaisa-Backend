@@ -86,6 +86,7 @@ const searchUser = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(vo
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getAllUsers = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const query = req.query;
+    // console.log(query)
     const user = yield user_service_1.UserServices.getAllUsers(query);
     (0, sendResponse_1.sendResponse)(res, {
         success: true,

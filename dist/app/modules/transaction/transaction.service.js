@@ -24,6 +24,10 @@ const wallet_model_1 = require("../wallet/wallet.model");
 const amountChecker_1 = require("../../utils/amountChecker");
 const queryBuilder_1 = require("../../utils/queryBuilder");
 const transaction_constant_1 = require("./transaction.constant");
+const fees_constant_1 = require("../fees/fees.constant");
+const fees_model_1 = require("../fees/fees.model");
+const sslcommerz_ts_1 = require("@dmasifur/sslcommerz-ts");
+const env_1 = require("../../config/env");
 //anyone can get his own transaction or the admin can get any transaction
 const getSingleTransaction = (transactionId, decodedToken) => __awaiter(void 0, void 0, void 0, function* () {
     const ifTransactionExists = yield transaction_model_1.Transaction.findById(transactionId);
@@ -217,11 +221,8 @@ const addMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, fu
     const session = yield user_model_1.User.startSession();
     session.startTransaction();
     try {
-        const { to: toPhone, type, amount } = payload;
+        const { type, amount } = payload;
         (0, amountChecker_1.amountCheck)(amount);
-        const ifAgentExists = yield user_model_1.User.findOne({ phoneNo: toPhone });
-        yield (0, transaction_utils_1.agentValidator)(ifAgentExists);
-        const agentWallet = yield wallet_model_1.Wallet.findById(ifAgentExists === null || ifAgentExists === void 0 ? void 0 : ifAgentExists.walletId);
         if (type !== transaction_interface_1.ITransactionType.ADD_MONEY) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Your operation is not correct.");
         }
@@ -229,19 +230,48 @@ const addMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, fu
         const userWallet = yield wallet_model_1.Wallet.findById(user === null || user === void 0 ? void 0 : user.walletId);
         const transaction = yield transaction_model_1.Transaction.create([
             {
-                from: userWallet === null || userWallet === void 0 ? void 0 : userWallet.walletId,
-                to: agentWallet === null || agentWallet === void 0 ? void 0 : agentWallet.walletId,
+                to: userWallet === null || userWallet === void 0 ? void 0 : userWallet.walletId,
+                from: "SSLCommerez",
                 amount,
                 type,
+                status: transaction_interface_1.ITransactionStatus.FAILED,
             },
         ], { session });
         userWallet === null || userWallet === void 0 ? void 0 : userWallet.transactionId.push(transaction[0]._id);
-        agentWallet === null || agentWallet === void 0 ? void 0 : agentWallet.transactionId.push(transaction[0]._id);
+        const sslCommerzPayment = new sslcommerz_ts_1.SslCommerzPayment(String(env_1.envVars.SSL.STORE_ID), String(env_1.envVars.SSL.STORE_PASSWORD), false);
+        const data = {
+            total_amount: amount,
+            currency: "BDT",
+            tran_id: String(transaction[0]._id),
+            success_url: `${env_1.envVars.SSL.SUCCESS_URL}?trans_id=${transaction[0]._id}`,
+            fail_url: `${env_1.envVars.SSL.FAIL_URL}?trans_id=${transaction[0]._id}`,
+            cancel_url: `${env_1.envVars.SSL.CANCEL_URL}?trans_id=${transaction[0]._id}`,
+            shipping_method: "N/A",
+            product_name: "Add Money",
+            product_category: "General",
+            product_profile: "general",
+            cus_name: "User",
+            cus_email: "test@example.com",
+            cus_add1: "Dhaka",
+            cus_city: "Dhaka",
+            cus_postcode: "1000",
+            cus_country: "Bangladesh",
+            cus_phone: "01711111111",
+            num_of_item: 1,
+            ship_name: "test_ship",
+            ship_add1: "ship_addr",
+            ship_city: "ship_city",
+            ship_postcode: "1111",
+            ship_country: "ship_country",
+        };
+        const apiResponse = yield sslCommerzPayment.init(data);
+        if (!apiResponse.GatewayPageURL) {
+            throw new appErrorHandler_1.default(http_status_1.default.SERVICE_UNAVAILABLE, 'Server error make a new request.');
+        }
         yield (userWallet === null || userWallet === void 0 ? void 0 : userWallet.save({ session }));
-        yield (agentWallet === null || agentWallet === void 0 ? void 0 : agentWallet.save({ session }));
         yield session.commitTransaction();
         session.endSession();
-        return transaction[0].toObject();
+        return Object.assign({ paymentUrl: apiResponse.GatewayPageURL }, transaction[0].toObject());
     }
     catch (error) {
         yield session.abortTransaction();
@@ -249,6 +279,100 @@ const addMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, fu
         throw error;
     }
 });
+const addMoneySuccess = (trans_id) => __awaiter(void 0, void 0, void 0, function* () {
+    const session = yield user_model_1.User.startSession();
+    session.startTransaction();
+    try {
+        const ifTransactionExists = yield transaction_model_1.Transaction.findById(trans_id);
+        if (!ifTransactionExists) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Transaction does not exist.");
+        }
+        if (ifTransactionExists.status === transaction_interface_1.ITransactionStatus.COMPLETED) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Transaction is already processed.");
+        }
+        const userWallet = yield wallet_model_1.Wallet.findOne({
+            walletId: ifTransactionExists === null || ifTransactionExists === void 0 ? void 0 : ifTransactionExists.to,
+        });
+        if (!userWallet) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "User wallet does not exist.");
+        }
+        ifTransactionExists.status = transaction_interface_1.ITransactionStatus.COMPLETED;
+        userWallet.balance += ifTransactionExists.amount;
+        yield ifTransactionExists.save({ session });
+        yield (userWallet === null || userWallet === void 0 ? void 0 : userWallet.save({ session }));
+        yield session.commitTransaction();
+        session.endSession();
+    }
+    catch (error) {
+        yield session.abortTransaction();
+        session.endSession();
+        throw error;
+    }
+});
+const addMoneyFail = (trans_id) => __awaiter(void 0, void 0, void 0, function* () {
+    const session = yield user_model_1.User.startSession();
+    session.startTransaction();
+    try {
+        const ifTransactionExists = yield transaction_model_1.Transaction.findById(trans_id);
+        if (!ifTransactionExists) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Transaction does not exist.");
+        }
+        if (ifTransactionExists.status === transaction_interface_1.ITransactionStatus.COMPLETED) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Transaction is already processed.");
+        }
+        ifTransactionExists.status = transaction_interface_1.ITransactionStatus.FAILED;
+        yield ifTransactionExists.save({ session });
+        yield session.commitTransaction();
+        session.endSession();
+    }
+    catch (error) {
+        yield session.abortTransaction();
+        session.endSession();
+        throw error;
+    }
+});
+//users can request for add money to any agent. if agent accepts, transaction completes
+// const addMoney = async (payload: ITransaction, decodedToken: JwtPayload) => {
+//   const session = await User.startSession();
+//   session.startTransaction();
+//   try {
+//     const { to: toPhone, type, amount } = payload;
+//     amountCheck(amount);
+//     const ifAgentExists = await User.findOne({ phoneNo: toPhone });
+//     await agentValidator(ifAgentExists);
+//     const agentWallet = await Wallet.findById(ifAgentExists?.walletId);
+//     if (type !== ITransactionType.ADD_MONEY) {
+//       throw new AppError(
+//         httpStatus.BAD_REQUEST,
+//         "Your operation is not correct."
+//       );
+//     }
+//     const user = await User.findById(decodedToken.userId);
+//     const userWallet = await Wallet.findById(user?.walletId);
+//     const transaction = await Transaction.create(
+//       [
+//         {
+//           from: userWallet?.walletId,
+//           to: agentWallet?.walletId,
+//           amount,
+//           type,
+//         },
+//       ],
+//       { session }
+//     );
+//     userWallet?.transactionId.push(transaction[0]._id);
+//     agentWallet?.transactionId.push(transaction[0]._id);
+//     await userWallet?.save({ session });
+//     await agentWallet?.save({ session });
+//     await session.commitTransaction();
+//     session.endSession();
+//     return transaction[0].toObject();
+//   } catch (error) {
+//     await session.abortTransaction();
+//     session.endSession();
+//     throw error;
+//   }
+// };
 //agent can confirm the add money request send to him from any user.
 const addMoneyConfirm = (transactionId, decodedToken, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const session = yield user_model_1.User.startSession();
@@ -326,6 +450,7 @@ const withdrawMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 
         if (!agentWallet) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Agent wallet does not exist.");
         }
+        const feesAmount = amount * fees_constant_1.feesRate;
         const transaction = yield transaction_model_1.Transaction.create([
             {
                 from: userWallet.walletId,
@@ -333,10 +458,18 @@ const withdrawMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 
                 amount,
                 type,
                 status: transaction_interface_1.ITransactionStatus.COMPLETED,
+                fees: feesAmount,
             },
         ], { session });
-        userWallet.balance = userWallet.balance - amount;
-        agentWallet.balance = agentWallet.balance + amount;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const fees = yield fees_model_1.Fees.create([
+            {
+                transactionId: transaction[0]._id,
+                amount: feesAmount,
+            },
+        ], { session });
+        userWallet.balance = userWallet.balance - amount - feesAmount;
+        agentWallet.balance = agentWallet.balance + amount + feesAmount;
         yield agentWallet.save({ session });
         yield userWallet.save({ session });
         yield session.commitTransaction();
@@ -462,7 +595,10 @@ const refund = (transactionId) => __awaiter(void 0, void 0, void 0, function* ()
         if (!ifTransactionExists) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Transaction does not exist.");
         }
-        const { from: to, to: from, status, amount } = ifTransactionExists;
+        if (ifTransactionExists.type === transaction_interface_1.ITransactionType.ADD_MONEY) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Refund for add money is not supported.");
+        }
+        const { from: to, to: from, status, amount, type } = ifTransactionExists;
         // const ifReceiverExists = await User.findOne({phoneNo:to})
         // await anyValidator(ifReceiverExists);
         // const ifSenderExists = await User.findOne({phoneNo:from})
@@ -483,8 +619,12 @@ const refund = (transactionId) => __awaiter(void 0, void 0, void 0, function* ()
         if (!receiverWallet) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Original sender wallet does not exist.");
         }
-        receiverWallet.balance = receiverWallet.balance + amount;
-        senderWallet.balance = senderWallet.balance - amount;
+        let feesAmount = 0;
+        if (type === transaction_interface_1.ITransactionType.WITHDRAW) {
+            feesAmount = amount * fees_constant_1.feesRate;
+        }
+        receiverWallet.balance = receiverWallet.balance + amount + feesAmount;
+        senderWallet.balance = senderWallet.balance - amount - feesAmount;
         ifTransactionExists.status = transaction_interface_1.ITransactionStatus.REFUNDED;
         yield ifTransactionExists.save({ session });
         yield senderWallet.save({ session });
@@ -510,4 +650,6 @@ exports.TransactionServices = {
     refund,
     getSummary,
     getAdminSummary,
+    addMoneySuccess,
+    addMoneyFail,
 };

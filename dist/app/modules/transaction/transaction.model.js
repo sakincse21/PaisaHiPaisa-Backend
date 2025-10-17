@@ -29,6 +29,10 @@ const TransactionSchema = new mongoose_1.Schema({
         enum: Object.values(transaction_interface_1.ITransactionStatus),
         required: true,
         default: transaction_interface_1.ITransactionStatus.PENDING
+    },
+    fees: {
+        type: Number,
+        default: 0
     }
 }, {
     timestamps: true,
