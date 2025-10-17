@@ -85,6 +85,7 @@ const searchUser = catchAsync(async (req: Request, res: Response, next: NextFunc
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getAllUsers = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     const query = req.query;
+    // console.log(query)
     const user = await UserServices.getAllUsers(query as Record<string, string>)
 
     sendResponse(res, {
