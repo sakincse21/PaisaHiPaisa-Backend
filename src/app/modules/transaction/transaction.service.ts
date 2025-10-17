@@ -735,6 +735,9 @@ const refund = async (transactionId: string) => {
     if (!ifTransactionExists) {
       throw new AppError(httpStatus.BAD_REQUEST, "Transaction does not exist.");
     }
+    if(ifTransactionExists.type === ITransactionType.ADD_MONEY){
+      throw new AppError(httpStatus.BAD_REQUEST, "Refund for add money is not supported.")
+    }
     const { from: to, to: from, status, amount, type } = ifTransactionExists;
     // const ifReceiverExists = await User.findOne({phoneNo:to})
     // await anyValidator(ifReceiverExists);
