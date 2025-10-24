@@ -33,7 +33,8 @@ const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const wallet_model_1 = require("../wallet/wallet.model");
 const user_constant_1 = require("./user.constant");
 const queryBuilder_1 = require("../../utils/queryBuilder");
-//anyone can create a user uing his phone, nid, email and other info
+const nodemailer_1 = require("../../utils/nodemailer");
+//anyone can create a user using his phone, nid, email and other info
 const createUser = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const session = yield user_model_1.User.startSession();
     session.startTransaction();
@@ -55,6 +56,7 @@ const createUser = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         const _a = user.toObject(), { password } = _a, userData = __rest(_a, ["password"]);
         yield session.commitTransaction();
         session.endSession();
+        yield (0, nodemailer_1.sendEmail)(user.email, "Welcome to PaisaHiPaisa", "Your account has been created successfully. Please wait for verification.");
         return userData;
     }
     catch (error) {
@@ -90,6 +92,9 @@ const updateUser = (userId, payload, decodedToken) => __awaiter(void 0, void 0, 
         }
         if (!user) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "User is not updated. Try again.");
+        }
+        if ((payload === null || payload === void 0 ? void 0 : payload.isVerified) === true) {
+            yield (0, nodemailer_1.sendEmail)(user.email, "Account Verified", "Your account has been verified successfully. You can now access all features.");
         }
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const _a = user.toObject(), { password } = _a, userData = __rest(_a, ["password"]);
@@ -173,6 +178,7 @@ const updatePassword = (payload, decodedToken) => __awaiter(void 0, void 0, void
     const hashedPassword = yield bcryptjs_1.default.hash(newPassword, Number(env_1.envVars.BCRYPT_SALT));
     ifUserExist.password = hashedPassword;
     yield ifUserExist.save();
+    yield (0, nodemailer_1.sendEmail)(ifUserExist.email, "Password Updated Successfully", "Your password has been updated successfully.");
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _a = ifUserExist.toObject(), { password } = _a, userData = __rest(_a, ["password"]);
     return userData;

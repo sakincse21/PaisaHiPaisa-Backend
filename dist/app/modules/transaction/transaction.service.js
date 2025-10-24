@@ -28,6 +28,7 @@ const fees_constant_1 = require("../fees/fees.constant");
 const fees_model_1 = require("../fees/fees.model");
 const sslcommerz_ts_1 = require("@dmasifur/sslcommerz-ts");
 const env_1 = require("../../config/env");
+const nodemailer_1 = require("../../utils/nodemailer");
 //anyone can get his own transaction or the admin can get any transaction
 const getSingleTransaction = (transactionId, decodedToken) => __awaiter(void 0, void 0, void 0, function* () {
     const ifTransactionExists = yield transaction_model_1.Transaction.findById(transactionId);
@@ -301,6 +302,11 @@ const addMoneySuccess = (trans_id) => __awaiter(void 0, void 0, void 0, function
         yield ifTransactionExists.save({ session });
         yield (userWallet === null || userWallet === void 0 ? void 0 : userWallet.save({ session }));
         yield session.commitTransaction();
+        const user = yield user_model_1.User.findOne({ phoneNo: userWallet.walletId });
+        if (!user) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "User does not exist.");
+        }
+        yield (0, nodemailer_1.sendEmail)(user.email, "Add Money Successful", `Your transaction has been completed successfully. ${ifTransactionExists.amount}BDT added to your account. Your new balance is ${userWallet.balance}BDT.`);
         session.endSession();
     }
     catch (error) {
@@ -323,6 +329,11 @@ const addMoneyFail = (trans_id) => __awaiter(void 0, void 0, void 0, function* (
         ifTransactionExists.status = transaction_interface_1.ITransactionStatus.FAILED;
         yield ifTransactionExists.save({ session });
         yield session.commitTransaction();
+        const user = yield user_model_1.User.findOne({ phoneNo: ifTransactionExists.to });
+        if (!user) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "User does not exist.");
+        }
+        yield (0, nodemailer_1.sendEmail)(user.email, "Add Money Failed", `Your transaction has failed. ${ifTransactionExists.amount}BDT was not added to your account.`);
         session.endSession();
     }
     catch (error) {
@@ -439,6 +450,9 @@ const withdrawMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Your operation is not correct.");
         }
         const user = yield user_model_1.User.findById(decodedToken.userId);
+        if (!user) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "User does not exist.");
+        }
         const userWallet = yield wallet_model_1.Wallet.findById(user === null || user === void 0 ? void 0 : user.walletId);
         if (!userWallet) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Your wallet does not exist.");
@@ -473,6 +487,7 @@ const withdrawMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 
         yield agentWallet.save({ session });
         yield userWallet.save({ session });
         yield session.commitTransaction();
+        yield (0, nodemailer_1.sendEmail)(user.email, "Money Withdrawn Successfully", `Your transaction has been completed successfully. ${transaction[0].amount}BDT withdrawn and ${feesAmount}BDT charge deducted from your account. Your new balance is ${userWallet.balance}BDT.`);
         session.endSession();
         return transaction[0].toObject();
     }
@@ -490,11 +505,17 @@ const cashIn = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, func
         const { to: toPhone, type, amount } = payload;
         (0, amountChecker_1.amountCheck)(amount);
         const ifUserExists = yield user_model_1.User.findOne({ phoneNo: toPhone });
+        if (!ifUserExists) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "User does not exist.");
+        }
         yield (0, transaction_utils_1.userValidator)(ifUserExists);
         if (type !== transaction_interface_1.ITransactionType.CASH_IN) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Your operation is not correct.");
         }
         const agent = yield user_model_1.User.findById(decodedToken.userId);
+        if (!agent) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Agent does not exist.");
+        }
         const agentWallet = yield wallet_model_1.Wallet.findById(agent === null || agent === void 0 ? void 0 : agent.walletId);
         if (!agentWallet) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Your wallet does not exist.");
@@ -520,6 +541,8 @@ const cashIn = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, func
         yield agentWallet.save({ session });
         yield userWallet.save({ session });
         yield session.commitTransaction();
+        yield (0, nodemailer_1.sendEmail)(agent.email, "Cash In Successful", `Your transaction has been completed successfully. ${transaction[0].amount}BDT cashed in to ${userWallet.walletId} from your account. Your new balance is ${agentWallet.balance}BDT.`);
+        yield (0, nodemailer_1.sendEmail)(ifUserExists.email, "Cash In Successful", `Your transaction has been completed successfully. ${transaction[0].amount}BDT cashed in to your account from ${agentWallet.walletId}. Your new balance is ${userWallet.balance}BDT.`);
         session.endSession();
         return transaction[0].toObject();
     }
@@ -536,6 +559,9 @@ const sendMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, f
     try {
         const { to: toPhone, type, amount } = payload;
         const ifReceiverExists = yield user_model_1.User.findOne({ phoneNo: toPhone });
+        if (!ifReceiverExists) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Receiver does not exist.");
+        }
         if (decodedToken.role === user_interface_1.IRole.AGENT) {
             yield (0, transaction_utils_1.agentValidator)(ifReceiverExists);
         }
@@ -552,6 +578,9 @@ const sendMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, f
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, `${decodedToken.role} can only send money to another ${decodedToken.role}`);
         }
         const sender = yield user_model_1.User.findById(decodedToken.userId);
+        if (!sender) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "User does not exist.");
+        }
         const senderWallet = yield wallet_model_1.Wallet.findById(sender === null || sender === void 0 ? void 0 : sender.walletId);
         if (!senderWallet) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Your wallet does not exist.");
@@ -577,6 +606,8 @@ const sendMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, f
         yield senderWallet.save({ session });
         yield receiverWallet.save({ session });
         yield session.commitTransaction();
+        yield (0, nodemailer_1.sendEmail)(sender.email, "Money Sent Successfully", `Your transaction has been completed successfully. ${transaction[0].amount}BDT sent from your account to ${receiverWallet.walletId}. Your new balance is ${senderWallet.balance}BDT.`);
+        yield (0, nodemailer_1.sendEmail)(ifReceiverExists.email, "Money Received Successfully", `You have received ${transaction[0].amount}BDT to your account from ${senderWallet.walletId}. Your new balance is ${receiverWallet.balance}BDT.`);
         session.endSession();
         return transaction[0].toObject();
     }
@@ -608,12 +639,20 @@ const refund = (transactionId) => __awaiter(void 0, void 0, void 0, function* ()
             status === transaction_interface_1.ITransactionStatus.FAILED) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Your operation is not correct.");
         }
+        const sender = yield user_model_1.User.findOne({ phoneNo: from });
+        if (!sender) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Original sender does not exist.");
+        }
         const senderWallet = yield wallet_model_1.Wallet.findOne({ walletId: from });
         if (!senderWallet) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Original receiver wallet does not exist.");
         }
         if (amount > senderWallet.balance) {
             throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Original receiver do not have sufficient balance for refund.");
+        }
+        const receiver = yield user_model_1.User.findOne({ phoneNo: to });
+        if (!receiver) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Original receiver does not exist.");
         }
         const receiverWallet = yield wallet_model_1.Wallet.findOne({ walletId: to });
         if (!receiverWallet) {
@@ -630,6 +669,8 @@ const refund = (transactionId) => __awaiter(void 0, void 0, void 0, function* ()
         yield senderWallet.save({ session });
         yield receiverWallet.save({ session });
         yield session.commitTransaction();
+        yield (0, nodemailer_1.sendEmail)(receiver.email, "Money Refunded Successfully", `Your transaction has been refunded successfully. ${ifTransactionExists.amount}BDT refunded to your account. Your new balance is ${receiverWallet.balance}BDT.`);
+        yield (0, nodemailer_1.sendEmail)(sender.email, "Money Deducted for Refund", `Your account has been deducted for a refund transaction. ${ifTransactionExists.amount}BDT deducted from your account. Your new balance is ${senderWallet.balance}BDT.`);
         session.endSession();
         return ifTransactionExists.toObject();
     }

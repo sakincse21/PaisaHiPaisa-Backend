@@ -10,7 +10,9 @@ const loadEnvVariables = () => {
     const requiredEnvVariables = ["PORT", "MONGODB_URL", "NODE_ENV",
         "BCRYPT_SALT", "JWT_SECRET", "JWT_EXPIRE", "SUPER_ADMIN_PASSWORD",
         "SUPER_ADMIN_EMAIL", "SUPER_ADMIN_NAME", "SUPER_ADMIN_PHONENO",
-        "SUPER_ADMIN_NIDNO", "FRONTEND_URL", "STORE_ID", "STORE_PASSWORD", "STORE_STATUS", "SUCCESS_URL", "CANCEL_URL", "FAIL_URL", "REDIRECT_URL"];
+        "SUPER_ADMIN_NIDNO", "FRONTEND_URL", "STORE_ID", "STORE_PASSWORD", "STORE_STATUS", "SUCCESS_URL", "CANCEL_URL", "FAIL_URL", "REDIRECT_URL",
+        "EMAIL", "APP_PASSWORD"
+    ];
     requiredEnvVariables.forEach((key) => {
         if (!process.env[key]) {
             throw new Error(`Missing required environment variable ${key}`);
@@ -38,6 +40,10 @@ const loadEnvVariables = () => {
             FAIL_URL: process.env.FAIL_URL,
             CANCEL_URL: process.env.CANCEL_URL,
             REDIRECT_URL: process.env.REDIRECT_URL
+        },
+        GMAIL: {
+            EMAIL: process.env.EMAIL,
+            APP_PASSWORD: process.env.APP_PASSWORD,
         }
     };
 };
