@@ -8,8 +8,9 @@ import { JwtPayload } from "jsonwebtoken";
 import { Wallet } from "../wallet/wallet.model";
 import { userSearchableFields } from "./user.constant";
 import { QueryBuilder } from "../../utils/queryBuilder";
+import { sendEmail } from "../../utils/nodemailer";
 
-//anyone can create a user uing his phone, nid, email and other info
+//anyone can create a user using his phone, nid, email and other info
 const createUser = async (payload: Partial<IUser>) => {
   const session = await User.startSession();
   session.startTransaction();
@@ -48,6 +49,11 @@ const createUser = async (payload: Partial<IUser>) => {
     await session.commitTransaction();
     session.endSession();
 
+    await sendEmail(
+      user.email,
+      "Welcome to PaisaHiPaisa",
+      "Your account has been created successfully. Please wait for verification."
+    );
     return userData;
   } catch (error) {
     await session.abortTransaction();
@@ -97,6 +103,14 @@ const updateUser = async (
       throw new AppError(
         httpStatus.BAD_REQUEST,
         "User is not updated. Try again."
+      );
+    }
+
+    if(payload?.isVerified === true){
+      await sendEmail(
+        user.email,
+        "Account Verified",
+        "Your account has been verified successfully. You can now access all features."
       );
     }
 
@@ -225,6 +239,12 @@ const updatePassword = async (
   ifUserExist.password = hashedPassword;
 
   await ifUserExist.save();
+
+  await sendEmail(
+    ifUserExist.email,
+    "Password Updated Successfully",
+    "Your password has been updated successfully."
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, ...userData } = ifUserExist.toObject();

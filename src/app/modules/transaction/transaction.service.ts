@@ -20,6 +20,7 @@ import { Fees } from "../fees/fees.model";
 import { SslCommerzPayment } from "@dmasifur/sslcommerz-ts";
 import type { PaymentData } from "@dmasifur/sslcommerz-ts";
 import { envVars } from "../../config/env";
+import { sendEmail } from "../../utils/nodemailer";
 
 //anyone can get his own transaction or the admin can get any transaction
 const getSingleTransaction = async (
@@ -351,6 +352,17 @@ const addMoneySuccess = async (trans_id: string) => {
     await ifTransactionExists.save({ session });
     await userWallet?.save({ session });
     await session.commitTransaction();
+
+    const user = await User.findOne({ phoneNo: userWallet.walletId });
+    if(!user){
+      throw new AppError(httpStatus.BAD_REQUEST, "User does not exist.");
+    }
+    await sendEmail(
+      user.email,
+      "Add Money Successful",
+      `Your transaction has been completed successfully. ${ifTransactionExists.amount}BDT added to your account. Your new balance is ${userWallet.balance}BDT.`
+    );
+
     session.endSession();
   } catch (error) {
     await session.abortTransaction();
@@ -379,6 +391,19 @@ const addMoneyFail = async (trans_id: string) => {
 
     await ifTransactionExists.save({ session });
     await session.commitTransaction();
+
+    const user = await User.findOne({ phoneNo: ifTransactionExists.to });
+    if(!user){
+      throw new AppError(httpStatus.BAD_REQUEST, "User does not exist.");
+    }
+
+    await sendEmail(
+      user.email,
+      "Add Money Failed",
+      `Your transaction has failed. ${ifTransactionExists.amount}BDT was not added to your account.`
+    );
+
+
     session.endSession();
   } catch (error) {
     await session.abortTransaction();
@@ -529,6 +554,11 @@ const withdrawMoney = async (
       );
     }
     const user = await User.findById(decodedToken.userId);
+
+    if (!user) {
+      throw new AppError(httpStatus.BAD_REQUEST, "User does not exist.");
+    }
+
     const userWallet = await Wallet.findById(user?.walletId);
     if (!userWallet) {
       throw new AppError(httpStatus.BAD_REQUEST, "Your wallet does not exist.");
@@ -580,6 +610,13 @@ const withdrawMoney = async (
     await userWallet.save({ session });
 
     await session.commitTransaction();
+
+    await sendEmail(
+      user.email,
+      "Money Withdrawn Successfully",
+      `Your transaction has been completed successfully. ${transaction[0].amount}BDT withdrawn and ${feesAmount}BDT charge deducted from your account. Your new balance is ${userWallet.balance}BDT.`
+    );
+
     session.endSession();
     return transaction[0].toObject();
   } catch (error) {
@@ -597,6 +634,9 @@ const cashIn = async (payload: ITransaction, decodedToken: JwtPayload) => {
     const { to: toPhone, type, amount } = payload;
     amountCheck(amount);
     const ifUserExists = await User.findOne({ phoneNo: toPhone });
+    if(!ifUserExists){
+      throw new AppError(httpStatus.BAD_REQUEST, "User does not exist.");
+    }
     await userValidator(ifUserExists);
     if (type !== ITransactionType.CASH_IN) {
       throw new AppError(
@@ -605,6 +645,11 @@ const cashIn = async (payload: ITransaction, decodedToken: JwtPayload) => {
       );
     }
     const agent = await User.findById(decodedToken.userId);
+
+    if(!agent){
+      throw new AppError(httpStatus.BAD_REQUEST, "Agent does not exist.");
+    }
+
     const agentWallet = await Wallet.findById(agent?.walletId);
     if (!agentWallet) {
       throw new AppError(httpStatus.BAD_REQUEST, "Your wallet does not exist.");
@@ -639,6 +684,19 @@ const cashIn = async (payload: ITransaction, decodedToken: JwtPayload) => {
     await agentWallet.save({ session });
     await userWallet.save({ session });
     await session.commitTransaction();
+
+    await sendEmail(
+      agent.email,
+      "Cash In Successful",
+      `Your transaction has been completed successfully. ${transaction[0].amount}BDT cashed in to ${userWallet.walletId} from your account. Your new balance is ${agentWallet.balance}BDT.`
+    );
+
+    await sendEmail(
+      ifUserExists.email,
+      "Cash In Successful",
+      `Your transaction has been completed successfully. ${transaction[0].amount}BDT cashed in to your account from ${agentWallet.walletId}. Your new balance is ${userWallet.balance}BDT.`
+    );
+
     session.endSession();
     return transaction[0].toObject();
   } catch (error) {
@@ -655,6 +713,9 @@ const sendMoney = async (payload: ITransaction, decodedToken: JwtPayload) => {
   try {
     const { to: toPhone, type, amount } = payload;
     const ifReceiverExists = await User.findOne({ phoneNo: toPhone });
+    if(!ifReceiverExists){
+      throw new AppError(httpStatus.BAD_REQUEST, "Receiver does not exist.");
+    }
     if (decodedToken.role === IRole.AGENT) {
       await agentValidator(ifReceiverExists);
     } else {
@@ -680,6 +741,11 @@ const sendMoney = async (payload: ITransaction, decodedToken: JwtPayload) => {
       );
     }
     const sender = await User.findById(decodedToken.userId);
+
+    if (!sender) {
+      throw new AppError(httpStatus.BAD_REQUEST, "User does not exist.");
+    }
+
     const senderWallet = await Wallet.findById(sender?.walletId);
     if (!senderWallet) {
       throw new AppError(httpStatus.BAD_REQUEST, "Your wallet does not exist.");
@@ -717,6 +783,19 @@ const sendMoney = async (payload: ITransaction, decodedToken: JwtPayload) => {
     await senderWallet.save({ session });
     await receiverWallet.save({ session });
     await session.commitTransaction();
+
+    await sendEmail(
+      sender.email,
+      "Money Sent Successfully",
+      `Your transaction has been completed successfully. ${transaction[0].amount}BDT sent from your account to ${receiverWallet.walletId}. Your new balance is ${senderWallet.balance}BDT.`
+    );
+
+    await sendEmail(
+      ifReceiverExists.email,
+      "Money Received Successfully",
+      `You have received ${transaction[0].amount}BDT to your account from ${senderWallet.walletId}. Your new balance is ${receiverWallet.balance}BDT.`
+    );
+
     session.endSession();
     return transaction[0].toObject();
   } catch (error) {
@@ -754,6 +833,10 @@ const refund = async (transactionId: string) => {
         "Your operation is not correct."
       );
     }
+    const sender = await User.findOne({ phoneNo: from });
+    if (!sender) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Original sender does not exist.");
+    }
     const senderWallet = await Wallet.findOne({ walletId: from });
     if (!senderWallet) {
       throw new AppError(
@@ -766,6 +849,11 @@ const refund = async (transactionId: string) => {
         httpStatus.BAD_REQUEST,
         "Original receiver do not have sufficient balance for refund."
       );
+    }
+    
+    const receiver = await User.findOne({ phoneNo: to });
+    if (!receiver) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Original receiver does not exist.");
     }
     const receiverWallet = await Wallet.findOne({ walletId: to });
     if (!receiverWallet) {
@@ -789,6 +877,19 @@ const refund = async (transactionId: string) => {
     await senderWallet.save({ session });
     await receiverWallet.save({ session });
     await session.commitTransaction();
+
+    await sendEmail(
+      receiver.email,
+      "Money Refunded Successfully",
+      `Your transaction has been refunded successfully. ${ifTransactionExists.amount}BDT refunded to your account. Your new balance is ${receiverWallet.balance}BDT.`
+    );
+
+    await sendEmail(
+      sender.email,
+      "Money Deducted for Refund",
+      `Your account has been deducted for a refund transaction. ${ifTransactionExists.amount}BDT deducted from your account. Your new balance is ${senderWallet.balance}BDT.`
+    );
+
     session.endSession();
     return ifTransactionExists.toObject();
   } catch (error) {

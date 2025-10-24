@@ -23,6 +23,10 @@ interface IEnvConfig {
     FAIL_URL: string;
     CANCEL_URL: string;
     REDIRECT_URL: string;
+  },
+  GMAIL:{
+    EMAIL: string;
+    APP_PASSWORD: string;
   }
 
 }
@@ -31,7 +35,9 @@ const loadEnvVariables = (): IEnvConfig => {
   const requiredEnvVariables: string[] = ["PORT", "MONGODB_URL", "NODE_ENV",
     "BCRYPT_SALT", "JWT_SECRET", "JWT_EXPIRE", "SUPER_ADMIN_PASSWORD",
     "SUPER_ADMIN_EMAIL","SUPER_ADMIN_NAME","SUPER_ADMIN_PHONENO",
-    "SUPER_ADMIN_NIDNO","FRONTEND_URL", "STORE_ID", "STORE_PASSWORD", "STORE_STATUS", "SUCCESS_URL", "CANCEL_URL", "FAIL_URL", "REDIRECT_URL"];
+    "SUPER_ADMIN_NIDNO","FRONTEND_URL", "STORE_ID", "STORE_PASSWORD", "STORE_STATUS", "SUCCESS_URL", "CANCEL_URL", "FAIL_URL", "REDIRECT_URL",
+    "EMAIL", "APP_PASSWORD"
+  ];
   requiredEnvVariables.forEach((key) => {
     if (!process.env[key]) {
       throw new Error(`Missing required environment variable ${key}`);
@@ -59,6 +65,10 @@ const loadEnvVariables = (): IEnvConfig => {
       FAIL_URL: process.env.FAIL_URL as string,
       CANCEL_URL: process.env.CANCEL_URL as string,
       REDIRECT_URL: process.env.REDIRECT_URL as string
+    },
+    GMAIL:{
+      EMAIL: process.env.EMAIL as string,
+      APP_PASSWORD: process.env.APP_PASSWORD as string,
     }
   };
 };
