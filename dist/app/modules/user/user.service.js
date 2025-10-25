@@ -175,6 +175,10 @@ const updatePassword = (payload, decodedToken) => __awaiter(void 0, void 0, void
     if (!ifOldPasswordMatch) {
         throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Old password does not match.");
     }
+    const ifNewPasswordMatch = yield bcryptjs_1.default.compare(newPassword, ifUserExist.password);
+    if (ifNewPasswordMatch) {
+        throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "New password cannot be same as old password.");
+    }
     const hashedPassword = yield bcryptjs_1.default.hash(newPassword, Number(env_1.envVars.BCRYPT_SALT));
     ifUserExist.password = hashedPassword;
     yield ifUserExist.save();
