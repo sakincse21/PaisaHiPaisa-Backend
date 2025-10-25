@@ -13,7 +13,7 @@ const router = Router();
  * update role/status/verification info by admin
  * delete by admin
  */
-router.patch('/admin/:id', authCheck(IRole.ADMIN, IRole.SUPER_ADMIN), validateRequest(updateAdminZodSchema), UserControllers.updateUser)
+router.patch('/admin/:id', authCheck(IRole.ADMIN, IRole.SUPER_ADMIN), validateRequest(updateAdminZodSchema), UserControllers.updateUser) //admin updates the user
 router.get('/all-users', authCheck(IRole.ADMIN, IRole.SUPER_ADMIN) , UserControllers.getAllUsers) //by admin
 router.post('/create',validateRequest(createUserZodSchema), UserControllers.createUser)
 router.get('/me', authCheck(...Object.values(IRole)),UserControllers.getMe) //by anyone
