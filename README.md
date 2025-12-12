@@ -12,7 +12,7 @@ Supports **users**, **agents**, **admins**, and **super admins** with automated 
 * 🔐 Authentication with JWT & HTTP-only cookies
 * 👥 Role-based access control: `USER`, `AGENT`, `ADMIN`, `SUPER_ADMIN`
 * 💳 Auto wallet creation (default TK50 balance)
-* 💸 Transaction system: Send, Add Money, Withdraw, Cash-In, Refund
+* 💸 Transaction system: Send, Add Money, Payment, Withdraw, Cash-In, Refund
 * 💰 Fee deduction system (via `fees` module)
 * 🧾 Transaction tracking with status (Pending, Completed, Failed, Refunded)
 * 🏦 Admin dashboard for full control
@@ -169,9 +169,9 @@ https://paisa-hi-paisa-backend.vercel.app/api/v1
 | GET    | `/transaction/admin/summary`         | Get system summary                | Admin / Super Admin  |
 | POST   | `/transaction/send-money`            | Send money between same roles     | User / Agent         |
 | POST   | `/transaction/cash-in`               | Agent cash-in to user             | Agent                |
-| POST   | `/transaction/withdraw`              | Withdraw from wallet              | User                 |
+| POST   | `/transaction/withdraw`              | Withdraw from wallet              | User, Merchant                 |
 | POST   | `/transaction/add-money`             | Initiate add money via SSLCommerz | User / Agent         |
-| POST   | `/transaction/add-money-confirm/:id` | Confirm add money                 | Agent                |
+| POST   | `/transaction/payment` | Payment to merchant                 | User                |
 | POST   | `/transaction/refund/:id`            | Refund transaction                | Admin / Super Admin  |
 | POST   | `/transaction/add-money/success`     | Payment success callback          | Public               |
 | POST   | `/transaction/add-money/fail`        | Payment fail callback             | Public               |
@@ -222,7 +222,7 @@ interface IFees {
   address: string;
   password: string;
   nidNo: string;
-  role: 'USER' | 'AGENT' | 'ADMIN' | 'SUPER_ADMIN';
+  role: 'USER' | 'AGENT' | 'ADMIN' | 'SUPER_ADMIN' | 'MERCHANT';
   isVerified: boolean;
   status: 'ACTIVE' | 'SUSPENDED' | 'BLOCKED' | 'DELETE';
   walletId: ObjectId;
@@ -248,7 +248,7 @@ interface IFees {
   to: string;
   amount: number;
   status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
-  type: 'SEND_MONEY' | 'ADD_MONEY' | 'WITHDRAW' | 'CASH_IN' | 'REFUND';
+  type: 'SEND_MONEY' | 'ADD_MONEY' | 'WITHDRAW' | 'CASH_IN' | 'REFUND' | 'PAYMENT;
 }
 ```
 
