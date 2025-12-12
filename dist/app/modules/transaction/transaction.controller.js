@@ -75,13 +75,13 @@ const addMoney = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void
 const addMoneySuccess = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { trans_id } = req.query;
     yield transaction_service_1.TransactionServices.addMoneySuccess(trans_id);
-    res.status(200).redirect(`${env_1.envVars.SSL.REDIRECT_URL}/success`);
+    res.status(200).redirect(`${env_1.envVars.FRONTEND_URL}${env_1.envVars.SSL.REDIRECT_URL}/success`);
 }));
 const addMoneyFail = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { trans_id } = req.query;
     const payload = req.body;
     yield transaction_service_1.TransactionServices.addMoneyFail(trans_id);
-    res.status(200).redirect(`${env_1.envVars.SSL.REDIRECT_URL}/failed`);
+    res.status(200).redirect(`${env_1.envVars.FRONTEND_URL}${env_1.envVars.SSL.REDIRECT_URL}/failed`);
 }));
 const addMoneyConfirm = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const decodedToken = req.user;
