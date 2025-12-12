@@ -94,7 +94,7 @@ const addMoneySuccess = catchAsync(
     const { trans_id } = req.query;
     await TransactionServices.addMoneySuccess(trans_id as string);
 
-    res.status(200).redirect(`${envVars.SSL.REDIRECT_URL}/success`)
+    res.status(200).redirect(`${envVars.FRONTEND_URL}${envVars.SSL.REDIRECT_URL}/success`)
   }
 );
 
@@ -105,7 +105,7 @@ const addMoneyFail = catchAsync(
     const payload = req.body;
     await TransactionServices.addMoneyFail(trans_id as string);
 
-    res.status(200).redirect(`${envVars.SSL.REDIRECT_URL}/failed`)
+    res.status(200).redirect(`${envVars.FRONTEND_URL}${envVars.SSL.REDIRECT_URL}/failed`)
   }
 );
 
