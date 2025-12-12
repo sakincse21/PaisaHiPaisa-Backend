@@ -7,6 +7,7 @@ var IRole;
     IRole["ADMIN"] = "ADMIN";
     IRole["USER"] = "USER";
     IRole["SUPER_ADMIN"] = "SUPER_ADMIN";
+    IRole["MERCHANT"] = "MERCHANT";
 })(IRole || (exports.IRole = IRole = {}));
 var IStatus;
 (function (IStatus) {

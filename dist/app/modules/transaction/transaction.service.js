@@ -617,6 +617,69 @@ const sendMoney = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, f
         throw error;
     }
 });
+//payment can send any amount to anyone of his role if balance is equal or more.
+const payment = (payload, decodedToken) => __awaiter(void 0, void 0, void 0, function* () {
+    const session = yield user_model_1.User.startSession();
+    session.startTransaction();
+    try {
+        const { to: toPhone, type, amount } = payload;
+        const ifReceiverExists = yield user_model_1.User.findOne({ phoneNo: toPhone });
+        if (!ifReceiverExists) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Receiver does not exist.");
+        }
+        if (ifReceiverExists.role !== user_interface_1.IRole.MERCHANT) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Payment can only be made to a merchant.");
+        }
+        if (type !== transaction_interface_1.ITransactionType.PAYMENT) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Your operation is not correct.");
+        }
+        // if (decodedToken.role !== ifReceiverExists?.role.toString()) {
+        //   throw new AppError(
+        //     httpStatus.BAD_REQUEST,
+        //     `${decodedToken.role} can only send money to another ${decodedToken.role}`
+        //   );
+        // }
+        const sender = yield user_model_1.User.findById(decodedToken.userId);
+        if (!sender) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "User does not exist.");
+        }
+        const senderWallet = yield wallet_model_1.Wallet.findById(sender === null || sender === void 0 ? void 0 : sender.walletId);
+        if (!senderWallet) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Your wallet does not exist.");
+        }
+        if (amount > senderWallet.balance) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "You do not have sufficient balance.");
+        }
+        const receiverWallet = yield wallet_model_1.Wallet.findById(ifReceiverExists === null || ifReceiverExists === void 0 ? void 0 : ifReceiverExists.walletId);
+        if (!receiverWallet) {
+            throw new appErrorHandler_1.default(http_status_1.default.BAD_REQUEST, "Merchant wallet does not exist.");
+        }
+        const transaction = yield transaction_model_1.Transaction.create([
+            {
+                from: senderWallet.walletId,
+                to: receiverWallet.walletId,
+                amount,
+                type,
+                status: transaction_interface_1.ITransactionStatus.COMPLETED,
+                fees: amount * fees_constant_1.feesRate,
+            },
+        ], { session });
+        receiverWallet.balance = receiverWallet.balance + (amount - (amount * fees_constant_1.feesRate));
+        senderWallet.balance = senderWallet.balance - amount;
+        yield senderWallet.save({ session });
+        yield receiverWallet.save({ session });
+        yield session.commitTransaction();
+        yield (0, nodemailer_1.sendEmail)(sender.email, "Money Paid Successfully", `Your transaction has been completed successfully. ${transaction[0].amount}BDT paid from your account to merchant ${receiverWallet.walletId}. Your new balance is ${senderWallet.balance}BDT.`);
+        yield (0, nodemailer_1.sendEmail)(ifReceiverExists.email, "Money Received Successfully", `You have received ${transaction[0].amount}BDT to your merchant account from ${senderWallet.walletId}. Your new balance is ${receiverWallet.balance}BDT.`);
+        session.endSession();
+        return transaction[0].toObject();
+    }
+    catch (error) {
+        yield session.abortTransaction();
+        session.endSession();
+        throw error;
+    }
+});
 //admins can proceed to refund any completed transactions
 const refund = (transactionId) => __awaiter(void 0, void 0, void 0, function* () {
     const session = yield user_model_1.User.startSession();
@@ -693,4 +756,5 @@ exports.TransactionServices = {
     getAdminSummary,
     addMoneySuccess,
     addMoneyFail,
+    payment
 };

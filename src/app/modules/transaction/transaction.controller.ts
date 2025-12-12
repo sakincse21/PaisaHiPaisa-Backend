@@ -180,6 +180,24 @@ const sendMoney = catchAsync(
   }
 );
 
+const payment = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const decodedToken = req.user;
+    const payload = req.body;
+    const transaction = await TransactionServices.payment(
+      payload,
+      decodedToken
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: "Payment processed successfully.",
+      data: transaction,
+    });
+  }
+);
+
 const refund = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const transactionId = req.params.id;
@@ -207,4 +225,5 @@ export const TransactionControllers = {
   getAdminSummary,
   addMoneySuccess,
   addMoneyFail,
+  payment
 };

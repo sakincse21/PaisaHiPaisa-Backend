@@ -194,6 +194,8 @@ const getAllUsers = async (query: Record<string, string>) => {
     queryBuilder.getMeta(),
   ]);
 
+  console.log(data)
+
   return { data, meta };
 };
 

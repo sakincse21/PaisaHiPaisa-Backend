@@ -128,6 +128,17 @@ const sendMoney = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(voi
         data: transaction,
     });
 }));
+const payment = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const decodedToken = req.user;
+    const payload = req.body;
+    const transaction = yield transaction_service_1.TransactionServices.payment(payload, decodedToken);
+    (0, sendResponse_1.sendResponse)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        message: "Payment processed successfully.",
+        data: transaction,
+    });
+}));
 const refund = (0, catchAsync_1.catchAsync)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const transactionId = req.params.id;
     const transaction = yield transaction_service_1.TransactionServices.refund(transactionId);
@@ -151,4 +162,5 @@ exports.TransactionControllers = {
     getAdminSummary,
     addMoneySuccess,
     addMoneyFail,
+    payment
 };

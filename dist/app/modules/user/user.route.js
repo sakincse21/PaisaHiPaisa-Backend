@@ -14,7 +14,7 @@ const router = (0, express_1.Router)();
  * update role/status/verification info by admin
  * delete by admin
  */
-router.patch('/admin/:id', (0, authCheck_1.authCheck)(user_interface_1.IRole.ADMIN, user_interface_1.IRole.SUPER_ADMIN), (0, validateRequest_1.validateRequest)(user_validation_1.updateAdminZodSchema), user_controller_1.UserControllers.updateUser);
+router.patch('/admin/:id', (0, authCheck_1.authCheck)(user_interface_1.IRole.ADMIN, user_interface_1.IRole.SUPER_ADMIN), (0, validateRequest_1.validateRequest)(user_validation_1.updateAdminZodSchema), user_controller_1.UserControllers.updateUser); //admin updates the user
 router.get('/all-users', (0, authCheck_1.authCheck)(user_interface_1.IRole.ADMIN, user_interface_1.IRole.SUPER_ADMIN), user_controller_1.UserControllers.getAllUsers); //by admin
 router.post('/create', (0, validateRequest_1.validateRequest)(user_validation_1.createUserZodSchema), user_controller_1.UserControllers.createUser);
 router.get('/me', (0, authCheck_1.authCheck)(...Object.values(user_interface_1.IRole)), user_controller_1.UserControllers.getMe); //by anyone

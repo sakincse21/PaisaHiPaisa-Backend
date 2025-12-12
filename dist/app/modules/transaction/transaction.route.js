@@ -12,9 +12,10 @@ router.get('/', (0, authCheck_1.authCheck)(...Object.values(user_interface_1.IRo
 router.post('/add-money', (0, authCheck_1.authCheck)(user_interface_1.IRole.USER, user_interface_1.IRole.AGENT), (0, validateRequest_1.validateRequest)(transaction_validation_1.addMoneyZodSchema), transaction_controller_1.TransactionControllers.addMoney);
 router.post('/add-money/success', transaction_controller_1.TransactionControllers.addMoneySuccess);
 router.post('/add-money/fail', transaction_controller_1.TransactionControllers.addMoneyFail);
-router.post('/withdraw', (0, authCheck_1.authCheck)(user_interface_1.IRole.USER), (0, validateRequest_1.validateRequest)(transaction_validation_1.createTransactionZodSchema), transaction_controller_1.TransactionControllers.withdrawMoney);
+router.post('/withdraw', (0, authCheck_1.authCheck)(user_interface_1.IRole.USER, user_interface_1.IRole.MERCHANT), (0, validateRequest_1.validateRequest)(transaction_validation_1.createTransactionZodSchema), transaction_controller_1.TransactionControllers.withdrawMoney);
 router.post('/cash-in', (0, authCheck_1.authCheck)(user_interface_1.IRole.AGENT), (0, validateRequest_1.validateRequest)(transaction_validation_1.createTransactionZodSchema), transaction_controller_1.TransactionControllers.cashIn);
 router.post('/send-money', (0, authCheck_1.authCheck)(user_interface_1.IRole.USER, user_interface_1.IRole.AGENT), (0, validateRequest_1.validateRequest)(transaction_validation_1.createTransactionZodSchema), transaction_controller_1.TransactionControllers.sendMoney);
+router.post('/payment', (0, authCheck_1.authCheck)(user_interface_1.IRole.USER), (0, validateRequest_1.validateRequest)(transaction_validation_1.createTransactionZodSchema), transaction_controller_1.TransactionControllers.payment);
 router.get('/summary', (0, authCheck_1.authCheck)(user_interface_1.IRole.AGENT, user_interface_1.IRole.USER), transaction_controller_1.TransactionControllers.getSummary);
 router.get('/admin/summary', (0, authCheck_1.authCheck)(user_interface_1.IRole.ADMIN, user_interface_1.IRole.SUPER_ADMIN), transaction_controller_1.TransactionControllers.getAdminSummary);
 router.post('/refund/:id', (0, authCheck_1.authCheck)(user_interface_1.IRole.ADMIN, user_interface_1.IRole.SUPER_ADMIN), transaction_controller_1.TransactionControllers.refund);

@@ -15,4 +15,5 @@ var ITransactionType;
     ITransactionType["WITHDRAW"] = "WITHDRAW";
     ITransactionType["CASH_IN"] = "CASH_IN";
     ITransactionType["REFUND"] = "REFUND";
+    ITransactionType["PAYMENT"] = "PAYMENT";
 })(ITransactionType || (exports.ITransactionType = ITransactionType = {}));

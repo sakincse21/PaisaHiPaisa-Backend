@@ -152,6 +152,7 @@ const getAllUsers = (query) => __awaiter(void 0, void 0, void 0, function* () {
         usersData.build(),
         queryBuilder.getMeta(),
     ]);
+    console.log(data);
     return { data, meta };
 });
 //anyone can get his own info

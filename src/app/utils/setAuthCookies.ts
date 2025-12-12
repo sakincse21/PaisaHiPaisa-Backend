@@ -1,12 +1,19 @@
 import { Response } from "express";
 
 export const setAuthCookie = (res: Response, token: string) => {
-    res.cookie("accessToken", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-    });
-
+    // res.cookie("accessToken", token, {
+      // httpOnly: true,
+      // secure: false,
+      // sameSite: "none",
+    // });
+    
+res.cookie("accessToken", token, {
+    maxAge: 1000 * 60 * 60 * 24 * 7, // Expires in 7 days
+    httpOnly: true, // Accessible only by the server
+    secure: true, // Sent only over HTTPS
+    sameSite: "none",
+    domain: "localhost", // Adjust domain as needed
+});
   // if (tokenInfo.refreshToken) {
   //     res.cookie("refreshToken", tokenInfo.refreshToken, {
   //         httpOnly: true,

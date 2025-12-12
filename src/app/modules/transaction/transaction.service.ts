@@ -805,6 +805,100 @@ const sendMoney = async (payload: ITransaction, decodedToken: JwtPayload) => {
   }
 };
 
+//payment can send any amount to anyone of his role if balance is equal or more.
+const payment = async (payload: ITransaction, decodedToken: JwtPayload) => {
+  const session = await User.startSession();
+  session.startTransaction();
+  try {
+    const { to: toPhone, type, amount } = payload;
+    const ifReceiverExists = await User.findOne({ phoneNo: toPhone });
+    if(!ifReceiverExists){
+      throw new AppError(httpStatus.BAD_REQUEST, "Receiver does not exist.");
+    }
+
+    if(ifReceiverExists.role !== IRole.MERCHANT){
+      throw new AppError(httpStatus.BAD_REQUEST, "Payment can only be made to a merchant.");
+    }
+
+
+    if (type !== ITransactionType.PAYMENT) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Your operation is not correct."
+      );
+    }
+    // if (decodedToken.role !== ifReceiverExists?.role.toString()) {
+    //   throw new AppError(
+    //     httpStatus.BAD_REQUEST,
+    //     `${decodedToken.role} can only send money to another ${decodedToken.role}`
+    //   );
+    // }
+    const sender = await User.findById(decodedToken.userId);
+
+    if (!sender) {
+      throw new AppError(httpStatus.BAD_REQUEST, "User does not exist.");
+    }
+
+    const senderWallet = await Wallet.findById(sender?.walletId);
+    if (!senderWallet) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Your wallet does not exist.");
+    }
+    if (amount > senderWallet.balance) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "You do not have sufficient balance."
+      );
+    }
+    const receiverWallet = await Wallet.findById(ifReceiverExists?.walletId);
+    if (!receiverWallet) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Merchant wallet does not exist."
+      );
+    }
+
+    const transaction = await Transaction.create(
+      [
+        {
+          from: senderWallet.walletId,
+          to: receiverWallet.walletId,
+          amount,
+          type,
+          status: ITransactionStatus.COMPLETED,
+          fees: amount * feesRate,
+        },
+      ],
+      { session }
+    );
+
+    receiverWallet.balance = receiverWallet.balance + (amount - (amount * feesRate));
+    senderWallet.balance = senderWallet.balance - amount;
+
+    await senderWallet.save({ session });
+    await receiverWallet.save({ session });
+    await session.commitTransaction();
+
+    await sendEmail(
+      sender.email,
+      "Money Paid Successfully",
+      `Your transaction has been completed successfully. ${transaction[0].amount}BDT paid from your account to merchant ${receiverWallet.walletId}. Your new balance is ${senderWallet.balance}BDT.`
+    );
+
+    await sendEmail(
+      ifReceiverExists.email,
+      "Money Received Successfully",
+      `You have received ${transaction[0].amount}BDT to your merchant account from ${senderWallet.walletId}. Your new balance is ${receiverWallet.balance}BDT.`
+    );
+
+    session.endSession();
+    return transaction[0].toObject();
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
 //admins can proceed to refund any completed transactions
 const refund = async (transactionId: string) => {
   const session = await User.startSession();
@@ -912,4 +1006,5 @@ export const TransactionServices = {
   getAdminSummary,
   addMoneySuccess,
   addMoneyFail,
+  payment
 };

@@ -4,7 +4,8 @@ export enum IRole{
     AGENT='AGENT',
     ADMIN='ADMIN',
     USER='USER',
-    SUPER_ADMIN="SUPER_ADMIN"
+    SUPER_ADMIN="SUPER_ADMIN",
+    MERCHANT="MERCHANT"
 }
 
 export enum IStatus{
